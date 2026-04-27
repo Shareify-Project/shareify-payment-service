@@ -15,7 +15,7 @@ from pydantic import BaseModel
 app = FastAPI(title="Shareify Payment Service", version="1.0.0")
 
 # ── Config ──────────────────────────────────────────────────────────────────
-DATABASE = os.getenv("DATABASE_PATH", "./data/payments.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:shareify-secure-db-pass@postgres-db:5432/payment_service")
 
 
 # ── Database ────────────────────────────────────────────────────────────────
@@ -96,4 +96,5 @@ def get_payment(payment_id: str):
 @app.get("/health")
 def health():
     return {"status": "healthy", "service": "shareify-payment-service"}
+
 
