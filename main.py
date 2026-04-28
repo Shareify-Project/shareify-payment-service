@@ -13,19 +13,17 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI(title="Shareify Payment Service", version="1.0.0")
-# -- POSTGRESQL HOTFIX: SQLite Polyfill --------------------------------------
-# Automatically translates SQLite conn.execute() and '?' to PostgreSQL syntax
+# --
+# -- POSTGRESQL HOTFIX: SQLite Polyfill Helper -------------------------------
 import psycopg2
-from psycopg2.extensions import connection
+from psycopg2.extras import RealDictCursor
 
-def _sqlite_to_psycopg2_execute(self, query, vars=None):
+def db_execute(conn, query, vars=None):
     if '?' in query:
         query = query.replace('?', '%s')
-    cursor = self.cursor()
+    cursor = conn.cursor()
     cursor.execute(query, vars)
     return cursor
-
-connection.execute = _sqlite_to_psycopg2_execute
 # ----------------------------------------------------------------------------
 import time
 from fastapi import Request
@@ -67,7 +65,7 @@ def get_db():
 
 def init_db():
     conn = get_db()
-    conn.execute("""
+    db_execute(conn, """
         CREATE TABLE IF NOT EXISTS payments (
             payment_id TEXT PRIMARY KEY,
             booking_id TEXT NOT NULL,
@@ -103,7 +101,7 @@ def process_payment(req: PaymentRequest):
 
     conn = get_db()
     try:
-        conn.execute(
+        db_execute(conn, 
             "INSERT INTO payments (payment_id, booking_id, amount, status, created_at) "
             "VALUES (?, ?, ?, ?, ?)",
             (payment_id, req.booking_id, req.amount, status,
@@ -124,7 +122,7 @@ def process_payment(req: PaymentRequest):
 def get_payment(payment_id: str):
     conn = get_db()
     try:
-        row = conn.execute(
+        row = db_execute(conn, 
             "SELECT * FROM payments WHERE payment_id = ?", (payment_id,)
         ).fetchone()
         if not row:
@@ -137,6 +135,7 @@ def get_payment(payment_id: str):
 @app.get("/health")
 def health():
     return {"status": "healthy", "service": "shareify-payment-service"}
+
 
 
 
